@@ -1,0 +1,16 @@
+# 1. Get Recent Videos (Public/Secured Endpoint)
+# Replace 'mysecretapikey' with the key defined in your .env file
+# Replace 'http://localhost:8000' with your deployed URL if applicable
+
+curl -X GET "http://localhost:8000/videos/recent?limit=5" \
+     -H "X-API-Key: mysecretapikey" \
+     -H "Content-Type: application/json"
+
+# 2. Simulate User Request (if authentication fails)
+curl -X GET "http://localhost:8000/videos/recent" \
+     -H "X-API-Key: wrong-key"
+
+# 3. Webhook Challenge Verification  (GET)
+# YouTube logic checks this to verify you own the endpoint
+curl -X GET "http://localhost:8000/webhook?hub.mode=subscribe&hub.topic=https://www.youtube.com/xml/feeds/videos.xml?channel_id=UC...&hub.challenge=12345"
+
