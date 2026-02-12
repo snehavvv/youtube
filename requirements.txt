@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+streamlit
+pymongo
+python-dotenv
+yt-dlp
+xmltodict
+feedparser
+google-generativeai
+requests
