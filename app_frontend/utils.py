@@ -7,8 +7,14 @@ from pymongo import MongoClient
 
 # Try to get from environment, then from Streamlit secrets
 MONGO_URI = os.getenv("MONGO_URI")
-if not MONGO_URI and "MONGO_URI" in st.secrets:
-    MONGO_URI = st.secrets["MONGO_URI"]
+
+if not MONGO_URI:
+    try:
+        # Safely check st.secrets (throws error on Render if no secrets.toml)
+        if "MONGO_URI" in st.secrets:
+            MONGO_URI = st.secrets["MONGO_URI"]
+    except Exception:
+        pass
 
 if not MONGO_URI:
     MONGO_URI = "mongodb://localhost:27017"
