@@ -10,3 +10,4 @@ google-generativeai
 requests
 dnspython
 pandas
+google-adk
