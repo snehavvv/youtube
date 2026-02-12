@@ -8,3 +8,5 @@ xmltodict
 feedparser
 google-generativeai
 requests
+dnspython
+pandas
