@@ -16,6 +16,10 @@ import os
 
 app = FastAPI(title="YouTube Monitor API")
 
+@app.get("/")
+def home():
+    return {"message": "Welcome to YouTube Monitor Link"}
+
 # Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
