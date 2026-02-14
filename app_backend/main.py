@@ -179,22 +179,19 @@ async def webhook_receive(request: Request):
                         except Exception as e:
                             logger.error(f"DB Error: {e}")
                             session.rollback()
+                        finally:
+                            session.close()
+    
+    return {"status": "received"}
+
+@app.get("/videos/recent", dependencies=[Depends(get_api_key)])
+async def get_recent_videos(limit: int = 10):
     session = SessionLocal()
     try:
         videos = session.query(Video).order_by(Video.upload_date.desc()).limit(limit).all()
         return [v.to_dict() for v in videos]
     finally:
-        session.close()status": "received"}
-    except Exception as e:
-        logger.error(f"Error processing webhook: {e}")
-        return {"status": "error", "detail": str(e)}
-
-@app.get("/videos/recent", dependencies=[Depends(get_api_key)])
-async def get_recent_videos(limit: int = 10):
-    collection = get_db_collection()
-    # Sort by upload_date descending
-    videos = list(collection.find({}, {"_id": 0}).sort("upload_date", -1).limit(limit))
-    return videos
+        session.close()
 
 @app.get("/")
 async def root():

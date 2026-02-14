@@ -1,0 +1,66 @@
+{
+	"info": {
+		"_postman_id": "youtube-monitor-api",
+		"name": "YouTube Monitor API",
+		"description": "API for accessing monitored YouTube video metadata.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Get Recent Videos (Secured)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-API-Key",
+						"value": "mysecretapikey",
+						"type": "text",
+						"description": "Authentication Token"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/videos/recent?limit=5",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"videos",
+						"recent"
+					],
+					"query": [
+						{
+							"key": "limit",
+							"value": "5"
+						}
+					]
+				},
+				"description": "Retrieves the most recently saved video metadata from the cloud database."
+			},
+			"response": []
+		},
+		{
+			"name": "Health Check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						""
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://youtube-agent-sneha.onrender.com",
+			"type": "string"
+		}
+	]
+}
