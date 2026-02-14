@@ -1,28 +1,23 @@
 import os
 import streamlit as st
 from dotenv import load_dotenv
-load_dotenv() # Load from .env if present
+from pathlib import Path
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
 
-from pymongo import MongoClient
+# Load from .env file explicitly
+env_path = Path(__file__).resolve().parent.parent / '.env'
+load_dotenv(dotenv_path=env_path, override=True)
 
-# Try to get from environment, then from Streamlit secrets
-MONGO_URI = os.getenv("MONGO_URI")
+# Configuration
+# Default to a local postgres if not set. User should set this to their Cloud SQL connection string.
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/youtube_monitor")
 
-if not MONGO_URI:
-    try:
-        # Safely check st.secrets (throws error on Render if no secrets.toml)
-        if "MONGO_URI" in st.secrets:
-            MONGO_URI = st.secrets["MONGO_URI"]
-    except Exception:
-        pass
+def get_db_connection():
+    engine = create_engine(DATABASE_URL)
+    return engine.connect()
 
-if not MONGO_URI:
-    MONGO_URI = "mongodb://localhost:27017"
-
-DB_NAME = os.getenv("DB_NAME", "youtube_monitor")
-COLLECTION_NAME = "videos"
-
-def get_collection():
-    client = MongoClient(MONGO_URI)
-    db = client[DB_NAME]
-    return db[COLLECTION_NAME]
+def get_db_session():
+    engine = create_engine(DATABASE_URL)
+    Session = sessionmaker(bind=engine)
+    return Session()

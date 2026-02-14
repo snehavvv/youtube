@@ -1,7 +1,9 @@
 fastapi
 uvicorn
-pymongo
+sqlalchemy
+psycopg2-binary
 xmltodict
 yt-dlp
 requests
 python-dotenv
+mangum

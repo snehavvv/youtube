@@ -1,27 +1,33 @@
-import yt_dlp
-import os
 import sys
+import os
+import yt_dlp
 from datetime import datetime
 
 # Add parent directory to path to import database module
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from app_backend.database import get_db_collection
+from app_backend.database import SessionLocal, Video
 
 CHANNELS = [
     "https://www.youtube.com/@markets",
-    "https://www.youtube.com/@ANINewsIndia"
+    "https://www.youtube.com/@ANINewsIndia",
+    "https://www.youtube.com/@CNN",
+    "https://www.youtube.com/@SkyNews",
+    "https://www.youtube.com/@AlJazeeraEnglish"
 ]
 
-def parse_video_data(entry):
+def parse_video_data(entry, default_channel_title=None):
     upload_date_str = entry.get('upload_date')
-    # yt-dlp returns date as YYYYMMDD
     if upload_date_str:
         try:
-            upload_date = datetime.strptime(upload_date_str, "%Y%m%d").isoformat()
+            upload_date = datetime.strptime(upload_date_str, "%Y%m%d")
         except ValueError:
-            upload_date = datetime.utcnow().isoformat()
+            upload_date = datetime.utcnow()
     else:
-        upload_date = datetime.utcnow().isoformat()
+        upload_date = datetime.utcnow()
+
+    # yt-dlp flat extraction sometimes puts channel in 'uploader' or 'channel'
+    channel_title = entry.get('channel') or entry.get('uploader') or default_channel_title
+    channel_id = entry.get('channel_id') or entry.get('uploader_id')
 
     return {
         "video_id": entry.get('id'),
@@ -31,57 +37,71 @@ def parse_video_data(entry):
         "view_count": entry.get('view_count'),
         "like_count": entry.get('like_count'),
         "description": entry.get('description'),
-        "channel_id": entry.get('channel_id'),
-        "channel_title": entry.get('channel')
+        "channel_id": channel_id,
+        "channel_title": channel_title
     }
 
 def ingest_channel(channel_url, limit=1000):
-    collection = get_db_collection()
+    # Append /videos to ensure we get video list, not channel tabs
+    if not channel_url.endswith('/videos') and not channel_url.endswith('/featured'):
+         target_url = channel_url + '/videos'
+    else:
+         target_url = channel_url
+
+    session = SessionLocal()
+    print(f"Fetching videos from {target_url}...")
     
     ydl_opts = {
         'quiet': True,
-        'extract_flat': True, # Don't download video, just metadata. Note: 'flat' might miss some details like likes/views if not careful, but for playlist it's faster. 
-        # Actually, extract_flat returns minimal info. We might need to iterate and fetch details if flat is too minimal.
-        # But fetching 1000 details is slow. Let's try to get what we can.
-        # For 'most recent 1000', we can use playlist_end.
+        'extract_flat': True, 
         'playlistend': limit,
         'ignoreerrors': True
     }
 
-    # First fetch the list of videos
-    print(f"Fetching videos from {channel_url}...")
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        # Extract channel info
-        info = ydl.extract_info(channel_url, download=False)
+        info = ydl.extract_info(target_url, download=False)
         
+        # Try to get channel title from top-level info
+        channel_level_title = info.get('uploader') or info.get('channel') or info.get('title')
+        print(f"Extracted Channel Title: {channel_level_title}")
+
         if 'entries' in info:
             entries = list(info['entries'])
-            print(f"Found {len(entries)} entries. Processing details...")
+            print(f"Found {len(entries)} entries. Processing...")
             
-            # For accurate metadata (views, likes), we often need to process individually or use a smarter option.
-            # However, extract_flat=True usually gives title, id, url. view_count might be missing or approximate.
-            # Let's see if we can update the options to get more info without downloading.
-            # Actually, to get full metadata like 'like_count', we usually need a full extraction.
-            # Doing 1000 full extractions will take a LONG time. 
-            # The prompt asks for "most recent 1,000 videos". 
-            # We will batch process these.
+            seen_ids = set()
             
-            # Let's save the basic info first (fast) or decide if we iterate.
-            # Optimization: We can insert what we have.
-            
-            video_data_list = []
             for entry in entries:
                 if entry:
-                    data = parse_video_data(entry)
-                    # upsert based on video_id
-                    collection.update_one(
-                        {"video_id": data["video_id"]},
-                        {"$set": data},
-                        upsert=True
-                    )
-                    # print(f"Processed {data['title']}")
+                    data = parse_video_data(entry, default_channel_title=channel_level_title)
+                    v_id = data["video_id"]
+                    
+                    # Validate It's a Video (Simple length check: YT video IDs are 11 chars)
+                    # Channel IDs are longer (24 chars, start with UC)
+                    if not v_id or len(v_id) > 11:
+                        continue
+                        
+                    # Deduplicate in current batch
+                    if v_id in seen_ids:
+                        continue
+                    seen_ids.add(v_id)
+
+                    # Upsert logic
+                    existing = session.query(Video).filter(Video.video_id == v_id).first()
+                    if existing:
+                        for key, value in data.items():
+                            setattr(existing, key, value)
+                    else:
+                        new_video = Video(**data)
+                        session.add(new_video)
+            
+            session.commit()
             print(f"Finished ingestion for {channel_url}")
+    session.close()
 
 if __name__ == "__main__":
+    print("Starting Ingestion...")
     for channel in CHANNELS:
-        ingest_channel(channel, limit=1000)
+        ingest_channel(channel, limit=50) # Reduced limit to 50 for quick testing
+    print("Ingestion Complete.")
+
