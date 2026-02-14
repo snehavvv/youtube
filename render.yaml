@@ -1,8 +1,25 @@
 services:
+  # 1. FastAPI Backend (The API Endpoint)
   - type: web
-    name: youtube-agent-sneha
+    name: youtube-api-sneha
     env: python
-    region: singapore # or ohio, frankfurt etc.
+    region: singapore
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app_backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.6
+      - key: DATABASE_URL
+        value: sqlite:///youtube.db
+      - key: API_KEY
+        value: mysecretapikey
+
+  # 2. Streamlit Dashboard (The UI)
+  - type: web
+    name: youtube-dashboard-sneha
+    env: python
+    region: singapore
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: streamlit run app.py --server.port $PORT --server.address 0.0.0.0
@@ -10,6 +27,6 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.6
       - key: GOOGLE_API_KEY
-        sync: false # User will input this in dashboard
+        sync: false
       - key: DATABASE_URL
         value: sqlite:///youtube.db 
