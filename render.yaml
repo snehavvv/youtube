@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: youtube-agent-sneha
+    env: python
+    region: singapore # or ohio, frankfurt etc.
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run app.py --server.port $PORT --server.address 0.0.0.0
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.6
+      - key: GOOGLE_API_KEY
+        sync: false # User will input this in dashboard
+      - key: DATABASE_URL
+        value: sqlite:///youtube.db 
